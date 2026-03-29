@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>StreamSrv</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0e0f14;--bg2:#13141c;--bg3:#1a1c28;--bg4:#202232;
+      --b1:rgba(255,255,255,.07);--b2:rgba(255,255,255,.13);
+      --text:#f0f2ff;--muted:#8890b0;--dim:#40476a;
+      --red:#e91e63;--purple:#7c4dff;--cyan:#00e5ff;
+      --green:#00e676;--yellow:#ffea00;--orange:#ff6d00;
+      --mono:'JetBrains Mono',monospace;--head:'Barlow Condensed',sans-serif;--body:'Barlow',sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:var(--body);color:var(--text);background:var(--bg);min-height:100vh;overflow-x:hidden}
+
+    /* TOPBAR */
+    .topbar{position:fixed;top:0;left:0;right:0;z-index:100;height:54px;background:rgba(14,15,20,.97);border-bottom:1px solid var(--b1);display:flex;align-items:center;}
+    .tb-logo{width:190px;flex-shrink:0;display:flex;align-items:center;gap:9px;padding:0 18px;border-right:1px solid var(--b1);height:100%;}
+    .tb-logo-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--red),var(--purple));display:flex;align-items:center;justify-content:center;box-shadow:0 0 14px rgba(233,30,99,.35);}
+    .tb-logo-icon svg{width:16px;height:16px;}
+    .tb-logo-name{font-family:var(--head);font-size:17px;font-weight:800;letter-spacing:.5px}
+    .tb-nav{display:flex;align-items:center;gap:2px;padding:0 10px;flex:1}
+    .tb-btn{padding:6px 13px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-family:var(--body);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
+    .tb-btn:hover{color:var(--text);background:rgba(255,255,255,.06)}
+    .tb-btn.active{color:var(--text)}
+    .tb-right{display:flex;align-items:center;gap:8px;padding:0 14px;border-left:1px solid var(--b1);height:100%;position:relative}
+    .ub{display:flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;border-radius:7px;border:1px solid var(--b1);background:rgba(255,255,255,.03);cursor:pointer;transition:all .15s}
+    .ub:hover{background:rgba(255,255,255,.07)}
+    .ub-img{width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,var(--red),var(--purple));display:flex;align-items:center;justify-content:center;font-family:var(--head);font-size:12px;font-weight:700;overflow:hidden;flex-shrink:0}
+    .ub-img img{width:100%;height:100%;object-fit:cover;border-radius:6px}
+    .ub-name{font-size:13px;font-weight:600}
+    .ub-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:190px;background:var(--bg2);border:1px solid var(--b2);border-radius:10px;box-shadow:0 14px 48px rgba(0,0,0,.65);overflow:hidden;z-index:300;display:none}
+    .ub-menu.open{display:block;animation:fadeD .18s ease}
+    @keyframes fadeD{from{opacity:0;transform:translateY(-6px)}}
+    .ub-mh{padding:12px 14px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:9px}
+    .ub-mh-av{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--red),var(--purple));overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--head);font-size:15px;font-weight:700}
+    .ub-mh-av img{width:100%;height:100%;object-fit:cover}
+    .ub-mi{display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text);width:100%;text-align:left;transition:background .1s}
+    .ub-mi:hover{background:rgba(255,255,255,.05)}
+    .ub-mi svg{width:15px;height:15px;color:var(--muted)}
+    .ub-sep{height:1px;background:var(--b1);margin:3px 0}
+    .ub-mi.danger{color:var(--red)}
+    .btn-auth{padding:7px 14px;border-radius:7px;border:1px solid var(--b2);background:transparent;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+    .btn-auth:hover{background:rgba(255,255,255,.07)}
+    .btn-signup{background:var(--purple);border:none;color:#fff;font-size:13px;font-weight:700;padding:7px 16px;border-radius:7px;cursor:pointer;box-shadow:0 3px 14px rgba(124,77,255,.35);transition:all .15s}
+    .btn-signup:hover{background:#9264ff;transform:translateY(-1px)}
+
+    /* LAYOUT */
+    .layout{display:flex;margin-top:54px;min-height:calc(100vh - 54px)}
+    .sidebar{width:190px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--b1);padding:14px 0;display:flex;flex-direction:column;gap:1px;position:sticky;top:54px;height:calc(100vh - 54px);overflow-y:auto}
+    .sb-sec{padding:8px 12px 4px;font-family:var(--head);font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase}
+    .sb-item{display:flex;align-items:center;gap:8px;padding:8px 13px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border:none;background:transparent;text-align:left;width:100%;transition:all .1s}
+    .sb-item:hover{color:var(--text);background:rgba(255,255,255,.04)}
+    .sb-item.active{color:var(--text);background:rgba(124,77,255,.13);border-left:2px solid var(--purple)}
+    .sb-item svg{width:15px;height:15px;flex-shrink:0}
+    .live-dot{width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px rgba(233,30,99,.22);animation:blink 2.2s infinite;flex-shrink:0}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+    .main{flex:1;min-width:0}
+    .page{display:none}
+    .page.active{display:block}
+
+    /* STREAM PAGE */
+    .stream-layout{display:grid;grid-template-columns:1fr 320px;height:calc(100vh - 54px);overflow:hidden}
+    @media(max-width:900px){.stream-layout{grid-template-columns:1fr;height:auto}}
+    .stream-left{display:flex;flex-direction:column;overflow-y:auto;background:var(--bg)}
+
+    /* Connect bar */
+    .cbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--b1)}
+    .inp{display:flex;align-items:center;gap:6px;padding:6px 11px;background:var(--bg3);border:1px solid var(--b1);border-radius:7px;transition:border-color .15s}
+    .inp:focus-within{border-color:var(--b2)}
+    .inp label{font-size:10px;color:var(--dim);font-family:var(--mono);white-space:nowrap}
+    .inp input,.inp select{background:none;border:none;outline:none;color:var(--text);font-size:12px;font-family:var(--body);min-width:55px}
+    .inp select option{background:var(--bg2)}
+    .ws-badge{display:flex;align-items:center;gap:5px;padding:6px 10px;background:var(--bg3);border:1px solid var(--b1);border-radius:7px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+    .ws-dot{width:6px;height:6px;border-radius:50%;background:var(--dim);flex-shrink:0;transition:background .2s}
+    .ws-dot.on{background:var(--green);box-shadow:0 0 0 3px rgba(0,230,118,.15);animation:blink 2.5s infinite}
+    .ws-dot.err{background:var(--red)}
+
+    /* Stage */
+    .stage{position:relative;background:#000;aspect-ratio:16/9;width:100%;overflow:hidden}
+    #screenVideo{width:100%;height:100%;object-fit:cover;display:block;background:#000}
+    .cam-pip{position:absolute;right:12px;bottom:12px;width:195px;aspect-ratio:16/9;border-radius:9px;border:none;box-shadow:none;overflow:hidden;background:#111;display:none;cursor:grab;user-select:none;resize:both;min-width:100px;max-width:420px}
+    .cam-pip.on{display:block}
+    .cam-pip:active{cursor:grabbing}
+    #camVideo{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+    .pip-label{position:absolute;top:5px;left:7px;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.5);background:rgba(0,0,0,.55);padding:2px 5px;border-radius:3px;pointer-events:none}
+    .stage-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:rgba(255,255,255,.12);pointer-events:none}
+    .stage-ph svg{width:60px;height:60px}
+    .stage-ph p{font-family:var(--head);font-size:11px;letter-spacing:2.5px;text-transform:uppercase}
+
+    /* Stage error overlay — shows for stream-ended, error, banned, kicked */
+    .stage-over{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(14,15,20,.92);backdrop-filter:blur(12px);z-index:5}
+    .stage-over.on{display:flex}
+    .stage-over-icon{color:rgba(255,255,255,.25);width:52px;height:52px}
+    .stage-over-icon svg{width:52px;height:52px}
+    .stage-over-title{font-family:var(--head);font-size:18px;letter-spacing:2px;color:var(--muted)}
+    .stage-over-sub{font-size:13px;color:var(--dim);text-align:center;max-width:260px;line-height:1.5}
+    .error-banned .stage-over-icon,.error-kicked .stage-over-icon{color:rgba(233,30,99,.4)}
+    .error-ended  .stage-over-icon{color:rgba(255,255,255,.2)}
+
+    /* Reconnect overlay on stage */
+    .reconnect-overlay{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(14,15,20,.9);backdrop-filter:blur(10px);z-index:6}
+    .reconnect-spinner{width:40px;height:40px;border:3px solid rgba(124,77,255,.2);border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .reconnect-msg{font-family:var(--head);font-size:15px;letter-spacing:1px;color:var(--muted)}
+    .reconnect-progress{width:200px;height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+    .reconnect-bar{height:100%;background:var(--purple);border-radius:2px;width:0%;transition:width .9s linear}
+    .reconnect-cancel{padding:7px 16px;border-radius:7px;border:1px solid var(--b2);background:transparent;color:var(--muted);font-size:12px;cursor:pointer;transition:all .15s}
+    .reconnect-cancel:hover{color:var(--text);border-color:var(--b2);background:rgba(255,255,255,.06)}
+
+    /* Latency badge on video */
+    .latency-badge{position:absolute;top:10px;right:10px;font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:4px;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);pointer-events:none;z-index:4;transition:background .3s}
+    .latency-badge.good{color:var(--green)}
+    .latency-badge.ok{color:var(--yellow)}
+    .latency-badge.bad{color:var(--red)}
+
+    /* Stream info bar */
+    .stream-info{display:none;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid var(--b1)}
+    .si-av{width:44px;height:44px;border-radius:9px;background:linear-gradient(135deg,var(--red),var(--purple));display:flex;align-items:center;justify-content:center;font-family:var(--head);font-size:18px;font-weight:700;overflow:hidden;flex-shrink:0}
+    .si-av img{width:100%;height:100%;object-fit:cover}
+    .si-title{font-family:var(--head);font-size:17px;font-weight:700;line-height:1.2}
+    .si-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:3px}
+    .badge{padding:2px 7px;border-radius:4px;font-family:var(--head);font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+    .badge.live{background:var(--red);color:#fff}
+    .badge.cat{background:rgba(124,77,255,.18);color:#b08aff;border:1px solid rgba(124,77,255,.22)}
+    .si-viewers{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
+    .si-viewers svg{width:11px;height:11px;color:var(--red)}
+
+    /* TOOLBAR base */
+    .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--b1)}
+    .ctrl{display:flex;flex-direction:column;align-items:center;gap:4px}
+    .ctrl-btn{width:42px;height:42px;border-radius:9px;border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;position:relative}
+    .ctrl-btn svg{width:18px;height:18px}
+    .ctrl-btn:not(:disabled):hover{background:rgba(255,255,255,.09);color:var(--text);border-color:var(--b2);transform:translateY(-1px)}
+    .ctrl-btn:not(:disabled):active{transform:translateY(0)}
+    .ctrl-btn:disabled{opacity:.22;cursor:not-allowed}
+    .ctrl-btn.on{background:rgba(0,230,118,.1);border-color:rgba(0,230,118,.28);color:var(--green)}
+    .ctrl-btn.off-state{background:rgba(233,30,99,.08);border-color:rgba(233,30,99,.22);color:#ff6b8a}
+    .ctrl-btn.danger{background:rgba(233,30,99,.1);border-color:rgba(233,30,99,.28);color:var(--red)}
+    .ctrl-btn.primary{background:rgba(124,77,255,.15);border-color:rgba(124,77,255,.32);color:#b08aff}
+    .ctrl-lbl{font-family:var(--mono);font-size:9px;color:var(--dim);white-space:nowrap;text-align:center}
+    .ctrl-lbl.on{color:var(--green)}
+    .ctrl-lbl.off{color:#ff6b8a}
+    .mic-badge{position:absolute;top:-3px;right:-3px;width:11px;height:11px;border-radius:50%;background:var(--red);border:2px solid var(--bg);display:none}
+    .mic-badge.on{display:block}
+    .t-sep{width:1px;height:32px;background:var(--b1)}
+
+    /* STREAMER toolbar */
+    #streamerToolbar{display:none}
+
+    /* VIEWER toolbar */
+    #viewerToolbar{display:none;flex-direction:column;border-bottom:1px solid var(--b1)}
+    .qual-row{display:flex;align-items:center;gap:8px;padding:9px 14px;flex-wrap:wrap;background:var(--bg2)}
+    .qual-label{font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;white-space:nowrap}
+    .qual-buttons{display:flex;gap:5px;flex-wrap:wrap}
+    .qual-btn{padding:5px 12px;border-radius:6px;border:1px solid var(--b1);background:var(--bg3);color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap}
+    .qual-btn:hover{border-color:var(--b2);color:var(--text)}
+    .qual-btn.active{background:rgba(124,77,255,.2);border-color:rgba(124,77,255,.45);color:#c4aaff}
+    .viewer-vol-row{display:flex;align-items:center;gap:14px;padding:8px 14px;background:var(--bg3);flex-wrap:wrap}
+    .vvol{display:flex;align-items:center;gap:6px}
+    .vvol svg{width:13px;height:13px;color:var(--muted)}
+    .vvol label{font-family:var(--mono);font-size:9px;color:var(--dim)}
+    input[type=range].vslider{-webkit-appearance:none;appearance:none;width:70px;height:3px;border-radius:2px;background:var(--b2);outline:none;cursor:pointer}
+    input[type=range].vslider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--purple);cursor:pointer;box-shadow:0 0 0 2px rgba(124,77,255,.25)}
+    input[type=range].vslider::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--purple);border:none}
+    .viewer-btns{display:flex;gap:6px;margin-left:auto}
+    .vbtn{width:34px;height:34px;border-radius:8px;border:1px solid var(--b1);background:var(--bg2);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
+    .vbtn:hover{background:rgba(255,255,255,.07);color:var(--text)}
+    .vbtn.on{background:rgba(124,77,255,.15);border-color:rgba(124,77,255,.35);color:#c4aaff}
+    .vbtn svg{width:16px;height:16px}
+
+    /* CHAT */
+    .chat-panel{display:flex;flex-direction:column;background:var(--bg2);border-left:1px solid var(--b1);height:calc(100vh - 54px);position:sticky;top:54px}
+    .chat-head{padding:11px 14px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+    .chat-head-t{font-family:var(--head);font-size:13px;font-weight:700;letter-spacing:.5px}
+    .rtt-p{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;color:var(--dim)}
+    .rtt-dot{width:5px;height:5px;border-radius:50%;background:var(--dim);transition:background .3s}
+    .chat-log{flex:1;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:1px;scrollbar-width:thin;scrollbar-color:var(--b1) transparent}
+    .chat-log::-webkit-scrollbar{width:3px}
+    .chat-log::-webkit-scrollbar-thumb{background:var(--b1);border-radius:3px}
+    .cmsg{display:flex;gap:6px;align-items:flex-start;padding:4px 7px;border-radius:6px;transition:background .1s;position:relative}
+    .cmsg:hover{background:rgba(255,255,255,.03)}
+    .cmsg-self{background:rgba(124,77,255,.05)}
+    .cmsg-av{width:20px;height:20px;border-radius:4px;flex-shrink:0;margin-top:1px;background:linear-gradient(135deg,var(--red),var(--purple));display:flex;align-items:center;justify-content:center;font-family:var(--head);font-size:9px;font-weight:700;overflow:hidden}
+    .cmsg-av img{width:100%;height:100%;object-fit:cover}
+    .cmsg-body{flex:1;min-width:0}
+    .cmsg-name{font-size:11px;font-weight:700;display:inline;margin-right:3px}
+    .cmsg-name.streamer{color:var(--red)}
+    .cmsg-name.viewer{color:#7ab8ff}
+    .cmsg-name.guest{color:var(--muted)}
+    .cmsg-text{font-size:13px;line-height:1.4;word-break:break-word;display:inline}
+    .cmsg-actions{display:none;gap:2px;position:absolute;right:6px;top:4px}
+    .cmsg:hover .cmsg-actions{display:flex}
+    .bmod{font-size:9px;padding:2px 5px;border-radius:4px;border:1px solid;background:rgba(0,0,0,.4);cursor:pointer;font-family:var(--mono);transition:background .1s}
+    .bkick{color:var(--yellow);border-color:rgba(255,234,0,.25)}
+    .bkick:hover{background:rgba(255,234,0,.1)}
+    .bban{color:var(--red);border-color:rgba(233,30,99,.25)}
+    .bban:hover{background:rgba(233,30,99,.1)}
+    .chat-inp-wrap{padding:9px 10px;border-top:1px solid var(--b1);flex-shrink:0}
+    .chat-inp-row{display:flex;gap:6px}
+    .chat-inp{flex:1;background:var(--bg3);border:1px solid var(--b1);border-radius:7px;padding:8px 11px;color:var(--text);font-size:13px;outline:none;font-family:var(--body);transition:border-color .15s}
+    .chat-inp:focus{border-color:rgba(124,77,255,.4)}
+    .chat-inp::placeholder{color:var(--dim)}
+    .btn-send{width:34px;height:34px;border-radius:7px;flex-shrink:0;background:rgba(124,77,255,.2);border:1px solid rgba(124,77,255,.35);color:#b08aff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+    .btn-send:hover{background:rgba(124,77,255,.35);transform:translateY(-1px)}
+    .btn-send svg{width:14px;height:14px}
+    .dev-log{margin:7px 10px 0;height:75px;overflow-y:auto;background:rgba(0,0,0,.4);border:1px solid var(--b1);border-radius:6px;padding:5px 8px;font-family:var(--mono);font-size:9px;color:var(--dim);white-space:pre-wrap;word-break:break-all;scrollbar-width:thin}
+
+    /* DISCOVER */
+    .discover{padding:24px}
+    .disc-h{font-family:var(--head);font-size:26px;font-weight:800;margin-bottom:4px}
+    .disc-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
+    .streams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+    .sc{background:var(--bg2);border:1px solid var(--b1);border-radius:11px;overflow:hidden;cursor:pointer;transition:all .18s}
+    .sc:hover{transform:translateY(-2px);border-color:var(--b2);box-shadow:0 10px 30px rgba(0,0,0,.4)}
+    .sc-thumb{aspect-ratio:16/9;background:var(--bg3);position:relative;display:flex;align-items:center;justify-content:center}
+    .sc-thumb svg{width:36px;height:36px;opacity:.13}
+    .sc-live{position:absolute;top:7px;left:7px;background:var(--red);color:#fff;font-family:var(--head);font-size:9px;font-weight:700;letter-spacing:.5px;padding:2px 6px;border-radius:4px}
+    .sc-vw{position:absolute;bottom:7px;right:7px;background:rgba(0,0,0,.7);color:var(--text);font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;display:flex;align-items:center;gap:3px}
+    .sc-vw svg{width:9px;height:9px;color:var(--red)}
+    .sc-body{padding:9px 11px}
+    .sc-user{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+    .sc-av{width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,var(--red),var(--purple));overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:var(--head);font-size:12px;font-weight:700;flex-shrink:0}
+    .sc-av img{width:100%;height:100%;object-fit:cover}
+    .sc-uname{font-weight:700;font-size:12px}
+    .sc-room{font-size:10px;color:var(--muted)}
+    .sc-title{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+    .sc-cat{font-family:var(--head);font-size:10px;font-weight:600;color:#b08aff;background:rgba(124,77,255,.1);padding:2px 7px;border-radius:4px;display:inline-block}
+    .no-streams{grid-column:1/-1;text-align:center;padding:56px 24px;color:var(--dim);font-family:var(--head);font-size:13px;letter-spacing:1px}
+
+    /* PROFILE */
+    .profile-page{max-width:780px;margin:0 auto;padding:28px 20px}
+    .profile-header{display:flex;align-items:flex-start;gap:20px;padding:22px;background:var(--bg2);border:1px solid var(--b1);border-radius:13px;margin-bottom:20px;position:relative}
+    .p-av{width:90px;height:90px;border-radius:14px;background:linear-gradient(135deg,var(--red),var(--purple));overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:var(--head);font-size:36px;font-weight:700;cursor:pointer;position:relative;flex-shrink:0;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+    .p-av img{width:100%;height:100%;object-fit:cover}
+    .p-av-ov{position:absolute;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;flex-direction:column;gap:4px}
+    .p-av:hover .p-av-ov{display:flex}
+    .p-av-ov svg{width:20px;height:20px}
+    .p-av-ov span{font-size:9px;font-family:var(--mono);letter-spacing:1px;color:#fff}
+    #avatarInput{display:none}
+    .p-info{flex:1}
+    .p-name{font-family:var(--head);font-size:26px;font-weight:800;margin-bottom:3px}
+    .p-joined{font-size:12px;color:var(--muted);margin-bottom:10px}
+    .p-bio{font-size:13px;color:var(--muted);line-height:1.5}
+    .p-edit-btn{position:absolute;top:14px;right:14px;padding:6px 12px;border-radius:7px;border:1px solid var(--b2);background:transparent;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+    .p-edit-btn:hover{background:rgba(255,255,255,.07)}
+    .p-edit-form{background:var(--bg3);border:1px solid var(--b1);border-radius:10px;padding:18px;margin-top:14px;display:none;flex-direction:column;gap:12px}
+    .p-edit-form.open{display:flex}
+    .form-field{display:flex;flex-direction:column;gap:5px}
+    .form-field label{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.5px}
+    .form-field textarea{background:var(--bg2);border:1px solid var(--b1);border-radius:7px;padding:9px 11px;color:var(--text);font-size:13px;font-family:var(--body);outline:none;resize:vertical;min-height:75px;transition:border-color .15s}
+    .form-field textarea:focus{border-color:rgba(124,77,255,.4)}
+    .form-btns{display:flex;gap:7px}
+    .btn-save{padding:8px 18px;border-radius:7px;background:var(--purple);border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
+    .btn-save:hover{background:#9264ff}
+    .btn-cancel{padding:8px 14px;border-radius:7px;border:1px solid var(--b2);background:transparent;color:var(--muted);font-size:13px;cursor:pointer}
+    .btn-cancel:hover{color:var(--text)}
+    .p-hist-title{font-family:var(--head);font-size:15px;font-weight:700;letter-spacing:.5px;margin-bottom:12px}
+    .shi{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--bg2);border:1px solid var(--b1);border-radius:9px;margin-bottom:7px}
+    .shi-icon{width:40px;height:40px;border-radius:7px;background:var(--bg3);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .shi-icon svg{width:18px;height:18px;color:var(--dim)}
+    .shi-title{font-weight:600;font-size:13px}
+    .shi-meta{font-size:11px;color:var(--muted);margin-top:2px}
+
+    /* SETTINGS */
+    .settings-page{max-width:680px;margin:0 auto;padding:28px 20px}
+    .settings-page h1{font-family:var(--head);font-size:24px;font-weight:800;margin-bottom:20px}
+    .s-sec{background:var(--bg2);border:1px solid var(--b1);border-radius:12px;margin-bottom:14px;overflow:hidden}
+    .s-sec-title{padding:13px 16px 11px;border-bottom:1px solid var(--b1);font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+    .s-row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--b1)}
+    .s-row:last-child{border-bottom:none}
+    .s-label{font-size:14px;font-weight:500}
+    .s-desc{font-size:12px;color:var(--muted);margin-top:2px}
+    .toggle{width:40px;height:22px;position:relative;flex-shrink:0}
+    .toggle input{display:none}
+    .toggle-track{width:40px;height:22px;background:var(--bg3);border:1px solid var(--b2);border-radius:11px;cursor:pointer;transition:background .2s}
+    .toggle input:checked+.toggle-track{background:var(--purple);border-color:var(--purple)}
+    .toggle-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:transform .2s,background .2s;pointer-events:none}
+    .toggle input:checked~.toggle-thumb{transform:translateX(18px);background:#fff}
+    .s-sel{background:var(--bg3);border:1px solid var(--b2);border-radius:7px;padding:6px 10px;color:var(--text);font-size:13px;outline:none}
+    .key-wrap{display:flex;align-items:center;gap:7px}
+    .key-val{font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--bg3);border:1px solid var(--b1);border-radius:6px;padding:5px 10px;letter-spacing:.5px}
+    .key-btn{padding:5px 10px;border-radius:6px;border:1px solid var(--b2);background:transparent;color:var(--text);font-size:11px;cursor:pointer;transition:all .15s}
+    .key-btn:hover{background:rgba(255,255,255,.07)}
+
+    /* MODALS */
+    .modal-bg{position:fixed;inset:0;z-index:400;background:rgba(14,15,20,.88);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center}
+    .modal-bg.hidden{display:none}
+    .modal{width:min(400px,93vw);background:var(--bg2);border:1px solid var(--b2);border-radius:15px;padding:26px 22px;box-shadow:0 28px 70px rgba(0,0,0,.7);animation:mIn .25s cubic-bezier(.34,1.56,.64,1)}
+    @keyframes mIn{from{transform:scale(.9) translateY(10px);opacity:0}}
+    .m-logo{display:flex;flex-direction:column;align-items:center;gap:9px;margin-bottom:20px}
+    .m-logo-icon{width:48px;height:48px;border-radius:13px;background:linear-gradient(135deg,var(--red),var(--purple));display:flex;align-items:center;justify-content:center;box-shadow:0 7px 22px rgba(233,30,99,.28)}
+    .m-logo-icon svg{width:23px;height:23px}
+    .m-title{font-family:var(--head);font-size:19px;font-weight:800;letter-spacing:.5px}
+    .m-sub{font-size:12px;color:var(--muted)}
+    .m-tabs{display:flex;gap:4px;margin-bottom:18px;background:rgba(0,0,0,.3);border-radius:9px;padding:3px}
+    .mtab{flex:1;padding:7px;border-radius:7px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;font-family:var(--head);font-weight:700;letter-spacing:.5px;transition:all .15s}
+    .mtab.on{background:rgba(124,77,255,.22);color:var(--text);border:1px solid rgba(124,77,255,.32)}
+    .mtab.guest.on{background:rgba(0,229,255,.1);border-color:rgba(0,229,255,.22);color:var(--cyan)}
+    .mfield{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+    .mfield label{font-size:10px;color:var(--muted);font-family:var(--mono);letter-spacing:.5px}
+    .mfield input{background:var(--bg3);border:1px solid var(--b1);border-radius:7px;padding:9px 12px;color:var(--text);font-size:14px;outline:none;font-family:var(--body);transition:all .15s}
+    .mfield input:focus{border-color:rgba(124,77,255,.42);background:rgba(124,77,255,.05)}
+    .merr{font-size:11px;color:#f48fb1;text-align:center;min-height:15px;margin-bottom:9px;font-family:var(--mono)}
+    .mbtn{width:100%;padding:11px;border-radius:9px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--head);letter-spacing:.5px;transition:all .15s}
+    .mbtn.purple{background:var(--purple);color:#fff;box-shadow:0 3px 16px rgba(124,77,255,.32)}
+    .mbtn.green{background:linear-gradient(135deg,#00c853,#00e676);color:#000}
+    .mbtn:hover{transform:translateY(-1px);filter:brightness(1.08)}
+    .m-skip{text-align:center;margin-top:12px;font-size:11px;color:var(--dim)}
+    .m-skip a{color:var(--muted);cursor:pointer}
+    .m-skip a:hover{color:var(--text);text-decoration:underline}
+
+    /* TOAST */
+    .toast{position:fixed;bottom:18px;right:18px;z-index:600;padding:10px 14px;border-radius:9px;background:var(--bg2);border:1px solid var(--b2);font-size:12px;font-family:var(--mono);color:var(--text);box-shadow:0 10px 32px rgba(0,0,0,.55);transform:translateY(60px);opacity:0;transition:transform .22s cubic-bezier(.34,1.56,.64,1),opacity .22s;max-width:270px;pointer-events:none}
+    .toast.on{transform:translateY(0);opacity:1}
+    .toast.err{border-color:rgba(233,30,99,.38);color:#f48fb1}
+    .toast.ok{border-color:rgba(0,230,118,.32);color:var(--green)}
+
+    #avatarInput{display:none}
+    @media(max-width:700px){.sidebar{display:none}.tb-logo{width:auto}.cbar .inp label{display:none}}
+  </style>
+</head>
+<body>
+
+<!-- AUTH MODAL -->
+<div class="modal-bg hidden" id="authModal">
+  <div class="modal">
+    <div class="m-logo">
+      <div class="m-logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7L16 12L23 17V7Z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+      <div class="m-title">STREAM SRV</div>
+      <div class="m-sub">Sign in or create an account</div>
+    </div>
+    <div class="m-tabs">
+      <button class="mtab on" id="mtLogin" onclick="switchTab('login')">Login</button>
+      <button class="mtab" id="mtReg" onclick="switchTab('register')">Register</button>
+      <button class="mtab guest" id="mtGuest" onclick="guestGo()">Guest →</button>
+    </div>
+    <div id="mfLogin">
+      <div class="mfield"><label>USERNAME</label><input id="authUser" placeholder="your_name" autocomplete="username"></div>
+      <div class="mfield"><label>PASSWORD</label><input id="authPass" type="password" placeholder="••••••" autocomplete="current-password"></div>
+      <div class="merr" id="authErr"></div>
+      <button class="mbtn purple" onclick="doLogin()">Sign in</button>
+    </div>
+    <div id="mfReg" style="display:none">
+      <div class="mfield"><label>USERNAME (3–32, a-z 0-9 _)</label><input id="regUser" placeholder="your_name" autocomplete="username"></div>
+      <div class="mfield"><label>PASSWORD (min 6 chars)</label><input id="regPass" type="password" placeholder="••••••" autocomplete="new-password"></div>
+      <div class="merr" id="regErr"></div>
+      <button class="mbtn green" onclick="doRegister()">Create account</button>
+    </div>
+    <div class="m-skip"><a onclick="guestGo()">Continue without account →</a></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<input type="file" id="avatarInput" accept="image/*" onchange="uploadAvatar(this)">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tb-logo">
+    <div class="tb-logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7L16 12L23 17V7Z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+    <div class="tb-logo-name">StreamSrv</div>
+  </div>
+  <nav class="tb-nav">
+    <button class="tb-btn active" id="tbStream" onclick="showPage('stream')">Stream</button>
+    <button class="tb-btn" id="tbDiscover" onclick="showPage('discover')">Discover</button>
+    <button class="tb-btn" id="tbSettings" onclick="showPage('settings')">Settings</button>
+  </nav>
+  <div class="tb-right">
+    <div id="authBtns" style="display:flex;gap:6px">
+      <button class="btn-auth" onclick="openAuth('login')">Log in</button>
+      <button class="btn-signup" onclick="openAuth('register')">Sign up</button>
+    </div>
+    <div class="ub" id="userBtn" style="display:none" onclick="toggleMenu()">
+      <div class="ub-img" id="ubImg">?</div>
+      <span class="ub-name" id="ubName">–</span>
+      <span style="color:var(--muted);font-size:9px">▾</span>
+    </div>
+    <div class="ub-menu" id="ubMenu">
+      <div class="ub-mh"><div class="ub-mh-av" id="ubMenuAv"></div><div><div style="font-weight:700;font-size:13px" id="ubMenuName">–</div><div style="font-size:11px;color:var(--muted)">StreamSrv</div></div></div>
+      <button class="ub-mi" onclick="showPage('profile');closeMenu()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profile</button>
+      <button class="ub-mi" onclick="showPage('settings');closeMenu()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>Settings</button>
+      <div class="ub-sep"></div>
+      <button class="ub-mi danger" onclick="doLogout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign out</button>
+    </div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+  <div class="sidebar">
+    <div class="sb-sec">Navigate</div>
+    <button class="sb-item active" id="sbStream" onclick="showPage('stream')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>Go Live</button>
+    <button class="sb-item" id="sbDiscover" onclick="showPage('discover')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Discover</button>
+    <button class="sb-item" id="sbProfile" onclick="showPage('profile')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profile</button>
+    <button class="sb-item" id="sbSettings" onclick="showPage('settings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>Settings</button>
+    <div class="sb-sec" style="margin-top:10px">Live Now</div>
+    <div id="sbLive"><div style="padding:7px 13px;font-size:12px;color:var(--dim)">No streams</div></div>
+  </div>
+
+  <div class="main">
+    <!-- STREAM PAGE -->
+    <div class="page active" id="pageStream">
+      <div class="stream-layout">
+        <div class="stream-left">
+
+          <!-- Connect bar -->
+          <div class="cbar">
+            <div class="inp"><label>ROOM</label><input id="room" value="" placeholder="streamer_name" style="width:100px"></div>
+            <div class="inp"><label>ROLE</label>
+              <select id="role"><option value="viewer">Viewer</option><option value="streamer">Streamer</option></select>
+            </div>
+            <div class="inp"><label>PASS</label><input id="roomPass" type="password" placeholder="optional" style="width:65px"></div>
+            <div class="inp"><label>TITLE</label><input id="streamTitle" placeholder="Stream title…" style="width:130px" onblur="typeof updateStreamMeta!=='undefined'&&updateStreamMeta()"></div>
+            <div class="inp"><label>CAT</label>
+              <select id="streamCat" onchange="typeof updateStreamMeta!=='undefined'&&updateStreamMeta()">
+                <option value="">—</option><option value="gaming">🎮 Gaming</option><option value="irl">📷 IRL</option>
+                <option value="music">🎵 Music</option><option value="art">🎨 Art</option>
+                <option value="coding">💻 Coding</option><option value="talk">🗣 Talk</option><option value="other">📌 Other</option>
+              </select>
+            </div>
+            <div class="ctrl">
+              <button class="ctrl-btn primary" id="btnConnect" onclick="wsConnect()" title="Connect">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              </button>
+              <span class="ctrl-lbl" id="connectLbl">connect</span>
+            </div>
+            <div class="ctrl" id="ctrlDisc" style="display:none">
+              <button class="ctrl-btn off-state" onclick="wsDisconnect()" title="Leave">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              </button>
+              <span class="ctrl-lbl off">leave</span>
+            </div>
+            <div class="ws-badge"><div class="ws-dot" id="wsDot"></div><span id="wsState">offline</span></div>
+          </div>
+
+          <!-- Stage -->
+          <div class="stage" id="stage">
+            <div class="stage-ph" id="stagePh" style="display:flex">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>
+              <p>Share screen to broadcast</p>
+            </div>
+
+            <!-- Error overlay (stream ended / error / banned / kicked) -->
+            <div class="stage-over" id="stageOver">
+              <div class="stage-over-icon" id="stageOverIcon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              </div>
+              <div class="stage-over-title" id="stageOverTitle">Stream Ended</div>
+              <div class="stage-over-sub" id="stageOverSub"></div>
+            </div>
+
+            <!-- Reconnect overlay (shown during auto-reconnect) -->
+            <div class="reconnect-overlay" id="reconnectOverlay">
+              <div class="reconnect-spinner"></div>
+              <div class="reconnect-msg" id="reconnectMsg">Reconnecting…</div>
+              <div class="reconnect-progress"><div class="reconnect-bar" id="reconnectBar"></div></div>
+              <button class="reconnect-cancel" onclick="cancelReconnect()">Cancel</button>
+            </div>
+
+            <video id="screenVideo" autoplay playsinline muted></video>
+            <div class="cam-pip" id="camPip"><video id="camVideo" autoplay playsinline muted></video><div class="pip-label">CAM</div></div>
+            <div class="latency-badge" id="latencyBadge"></div>
+          </div>
+
+          <!-- Stream info -->
+          <div class="stream-info" id="streamInfoBar">
+            <div class="si-av" id="siAvatar">?</div>
+            <div>
+              <div class="si-title" id="siTitle">Live stream</div>
+              <div class="si-meta">
+                <span class="badge live">LIVE</span>
+                <span class="badge cat" id="siCat" style="display:none"></span>
+                <div class="si-viewers"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3" fill="var(--bg)"/></svg><span id="siViewers">0</span> viewers</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STREAMER TOOLBAR — shown only when role=streamer after connect -->
+          <div class="toolbar" id="streamerToolbar">
+            <div class="ctrl">
+              <button class="ctrl-btn" id="btnScreen" disabled onclick="startScreen()" title="Share screen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><polyline points="9 8 12 5 15 8"/><line x1="12" y1="5" x2="12" y2="14"/></svg>
+              </button>
+              <span class="ctrl-lbl" id="screenLbl">screen</span>
+            </div>
+            <div class="ctrl">
+              <button class="ctrl-btn" id="btnCam" disabled onclick="toggleCam()" title="Camera">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7L16 12L23 17V7Z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+              </button>
+              <span class="ctrl-lbl" id="camLbl">camera</span>
+            </div>
+            <div class="ctrl">
+              <button class="ctrl-btn" id="btnMic" disabled onclick="toggleMic()" title="Mic">
+                <div class="mic-badge" id="micBadge"></div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              </button>
+              <span class="ctrl-lbl" id="micLbl">mic</span>
+            </div>
+            <div class="ctrl">
+              <button class="ctrl-btn danger" id="btnStop" disabled onclick="stopAll()" title="End stream">
+                <svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>
+              </button>
+              <span class="ctrl-lbl off">stop</span>
+            </div>
+            <div class="t-sep"></div>
+            <!-- Streamer source quality presets — напрямую вызывают applyViewerQuality для всех вьюверов -->
+            <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-start">
+              <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">SOURCE QUALITY</span>
+              <div style="display:flex;gap:4px;flex-wrap:wrap" id="streamerQualBtns">
+                <button class="qual-btn" data-sq="source"  onclick="setSourceQuality('source')">Source</button>
+                <button class="qual-btn" data-sq="1080p"   onclick="setSourceQuality('1080p')">1080p</button>
+                <button class="qual-btn active" data-sq="720p" onclick="setSourceQuality('720p')">720p</button>
+                <button class="qual-btn" data-sq="480p"    onclick="setSourceQuality('480p')">480p</button>
+                <button class="qual-btn" data-sq="360p"    onclick="setSourceQuality('360p')">360p</button>
+              </div>
+            </div>
+            <div class="t-sep"></div>
+            <span style="font-family:var(--mono);font-size:9px;color:var(--dim)" id="myId">—</span>
+          </div>
+
+          <!-- VIEWER TOOLBAR — shown only when role=viewer after connect -->
+          <div id="viewerToolbar">
+            <!-- Quality row: quality = resolution scale, NOT bitrate -->
+            <div class="qual-row">
+              <span class="qual-label">Quality</span>
+              <div class="qual-buttons" id="qualButtons">
+                <button class="qual-btn active" data-quality="auto"   onclick="requestQuality('auto')">Auto</button>
+                <button class="qual-btn"         data-quality="source" onclick="requestQuality('source')">Source</button>
+                <button class="qual-btn"         data-quality="1080p"  onclick="requestQuality('1080p')">1080p</button>
+                <button class="qual-btn"         data-quality="720p"   onclick="requestQuality('720p')">720p</button>
+                <button class="qual-btn"         data-quality="480p"   onclick="requestQuality('480p')">480p</button>
+                <button class="qual-btn"         data-quality="360p"   onclick="requestQuality('360p')">360p</button>
+                <button class="qual-btn"         data-quality="240p"   onclick="requestQuality('240p')">240p</button>
+              </div>
+              <span style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-left:auto" id="myId2">—</span>
+            </div>
+            <!-- Volume mixer + viewer buttons -->
+            <div class="viewer-vol-row">
+              <div class="vvol">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                <label>GAME</label>
+                <input type="range" class="vslider" min="0" max="1" step="0.02" value="1" id="volGame" oninput="setGameVolume&&setGameVolume(this.value)">
+              </div>
+              <div class="vvol">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+                <label>MIC</label>
+                <input type="range" class="vslider" min="0" max="1" step="0.02" value="1" id="volMic" oninput="setMicVolume&&setMicVolume(this.value)">
+              </div>
+              <div class="viewer-btns">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+                  <button class="vbtn" id="btnTheater" onclick="toggleTheater()" title="Theater mode">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="8" y1="5" x2="8" y2="19"/><line x1="16" y1="5" x2="16" y2="19"/></svg>
+                  </button>
+                  <span class="ctrl-lbl" id="theaterLbl">theater</span>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+                  <button class="vbtn" onclick="toggleFullscreen()" title="Fullscreen (F)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                  </button>
+                  <span class="ctrl-lbl">fullscr</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /stream-left -->
+
+        <!-- CHAT -->
+        <div class="chat-panel">
+          <div class="chat-head">
+            <div style="display:flex;align-items:center;gap:9px">
+              <span class="chat-head-t">CHAT</span>
+              <div class="rtt-p"><div class="rtt-dot" id="rttDot"></div><span id="rttVal">– ms</span></div>
+            </div>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--dim)" id="peersLbl">0</span>
+          </div>
+          <div class="chat-log" id="chatLog"></div>
+          <div class="chat-inp-wrap">
+            <div class="chat-inp-row">
+              <input class="chat-inp" id="chatInput" placeholder="Send a message…">
+              <button class="btn-send" onclick="sendChat()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+            </div>
+            <div class="dev-log" id="devLog"></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /pageStream -->
+
+    <!-- DISCOVER -->
+    <div class="page" id="pageDiscover">
+      <div class="discover">
+        <div class="disc-h">Live Channels</div>
+        <div class="disc-sub">What's happening right now on StreamSrv</div>
+        <div class="streams-grid" id="streamsGrid"><div class="no-streams">NO ACTIVE STREAMS</div></div>
+      </div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="page" id="pageProfile">
+      <div class="profile-page">
+        <div class="profile-header">
+          <div class="p-av" id="profileAvatar" onclick="document.getElementById('avatarInput').click()">
+            <div class="p-av-ov"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>CHANGE</span></div>
+          </div>
+          <div class="p-info">
+            <div class="p-name" id="pUsername">—</div>
+            <div class="p-joined" id="pJoined">—</div>
+            <div class="p-bio" id="pBio">No bio yet.</div>
+          </div>
+          <button class="p-edit-btn" onclick="toggleEditForm()">Edit</button>
+        </div>
+        <div class="p-edit-form" id="pEditForm">
+          <div class="form-field"><label>BIO</label><textarea id="editBio" placeholder="Tell viewers about yourself…" maxlength="500"></textarea></div>
+          <div class="form-btns"><button class="btn-save" onclick="saveProfile()">Save</button><button class="btn-cancel" onclick="toggleEditForm()">Cancel</button></div>
+        </div>
+        <div class="p-hist-title">Stream History</div>
+        <div id="pStreams"><div style="color:var(--dim);font-size:13px">No streams yet.</div></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="pageSettings">
+      <div class="settings-page">
+        <h1>Settings</h1>
+        <div class="s-sec">
+          <div class="s-sec-title">Stream — Source Quality</div>
+          <div class="s-row">
+            <div><div class="s-label">Frame rate</div><div class="s-desc">Capture FPS — 120 for high-refresh displays, 0 = uncapped</div></div>
+            <select class="s-sel" id="settingFps" onchange="saveSetting('fps',this.value)">
+              <option value="24">24 FPS</option><option value="30">30 FPS</option>
+              <option value="60" selected>60 FPS</option><option value="120">120 FPS</option><option value="0">Uncapped</option>
+            </select>
+          </div>
+          <div class="s-row">
+            <div><div class="s-label">Stream key</div><div class="s-desc">JWT token for API/OBS access</div></div>
+            <div class="key-wrap">
+              <div class="key-val" id="streamKey">••••••••••••</div>
+              <button class="key-btn" onclick="revealKey()">Show</button>
+              <button class="key-btn" onclick="copyKey()">Copy</button>
+            </div>
+          </div>
+        </div>
+        <div class="s-sec">
+          <div class="s-sec-title">Viewer defaults</div>
+          <div class="s-row">
+            <div><div class="s-label">Default quality</div><div class="s-desc">Quality level when joining a stream (Auto = ABR like Twitch)</div></div>
+            <select class="s-sel" id="settingDefaultQuality" onchange="saveSetting('defaultQuality',this.value)">
+              <option value="auto" selected>Auto (Adaptive)</option>
+              <option value="source">Source</option><option value="1080p">1080p</option>
+              <option value="720p">720p</option><option value="480p">480p</option>
+              <option value="360p">360p</option><option value="240p">240p — Low bandwidth</option>
+            </select>
+          </div>
+        </div>
+        <div class="s-sec">
+          <div class="s-sec-title">Audio (Mic)</div>
+          <div class="s-row">
+            <div><div class="s-label">Echo cancellation</div><div class="s-desc">Remove echo from your mic</div></div>
+            <label class="toggle"><input type="checkbox" id="settingEcho" checked onchange="saveSetting('echoCancel',this.checked)"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          </div>
+          <div class="s-row">
+            <div><div class="s-label">Noise suppression</div><div class="s-desc">Filter background noise</div></div>
+            <label class="toggle"><input type="checkbox" id="settingNoise" checked onchange="saveSetting('noiseSup',this.checked)"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          </div>
+        </div>
+        <div class="s-sec">
+          <div class="s-sec-title">Chat</div>
+          <div class="s-row">
+            <div><div class="s-label">Auto-scroll</div><div class="s-desc">Keep latest messages visible</div></div>
+            <label class="toggle"><input type="checkbox" id="settingAutoScroll" checked onchange="saveSetting('autoScroll',this.checked)"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          </div>
+        </div>
+        <div class="s-sec">
+          <div class="s-sec-title">Account</div>
+          <div class="s-row">
+            <div><div class="s-label">Sign out</div></div>
+            <button style="padding:7px 14px;border-radius:7px;background:rgba(233,30,99,.12);border:1px solid rgba(233,30,99,.28);color:var(--red);font-size:13px;font-weight:600;cursor:pointer" onclick="doLogout()">Sign out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+/* ═══ SESSION & AUTH ═══ */
+let _s={token:'',username:'',avatar_url:'',bio:''};
+function loadSession(){try{const r=localStorage.getItem('ss_session');if(r)_s=JSON.parse(r);}catch{}refreshUI();}
+function saveSession(d){_s={token:d.token||'',username:d.username||'',avatar_url:d.avatar_url||'',bio:d.bio||''};localStorage.setItem('ss_session',JSON.stringify(_s));refreshUI();}
+function refreshUI(){
+  const li=!!_s.token;
+  document.getElementById('authBtns').style.display=li?'none':'flex';
+  document.getElementById('userBtn').style.display=li?'flex':'none';
+  if(li){
+    setAvEl('ubImg',_s.avatar_url,_s.username);setAvEl('ubMenuAv',_s.avatar_url,_s.username);setAvEl('profileAvatar',_s.avatar_url,_s.username);
+    ['ubName','ubMenuName','pUsername'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=_s.username;});
+    const pb=document.getElementById('pBio');if(pb)pb.textContent=_s.bio||'No bio yet.';
+    const eb=document.getElementById('editBio');if(eb)eb.value=_s.bio||'';
+    const ri=document.getElementById('room');
+    if(ri&&document.getElementById('role').value==='streamer')ri.value=_s.username;
+  }
+}
+function setAvEl(id,url,name){const el=document.getElementById(id);if(!el)return;if(url){const img=document.createElement('img');img.src=url;img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:inherit';img.onerror=()=>{el.innerHTML='';el.textContent=(name||'?')[0].toUpperCase()};el.innerHTML='';el.appendChild(img);}else{el.textContent=(name||'?')[0].toUpperCase();}}
+function openAuth(tab){document.getElementById('authModal').classList.remove('hidden');switchTab(tab||'login');}
+function guestGo(){document.getElementById('authModal').classList.add('hidden');}
+function switchTab(t){document.getElementById('mtLogin').classList.toggle('on',t==='login');document.getElementById('mtReg').classList.toggle('on',t==='register');document.getElementById('mfLogin').style.display=t==='login'?'':'none';document.getElementById('mfReg').style.display=t==='register'?'':'none';}
+async function doLogin(){
+  const u=document.getElementById('authUser').value.trim(),p=document.getElementById('authPass').value;
+  const err=document.getElementById('authErr');err.textContent='';
+  try{const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});const d=await r.json();if(!r.ok){err.textContent=d.error||'Login failed';return;}saveSession(d);document.getElementById('authModal').classList.add('hidden');toast('Welcome back, '+d.username+' 👋','ok');}catch(e){err.textContent='Network error';}
+}
+async function doRegister(){
+  const u=document.getElementById('regUser').value.trim(),p=document.getElementById('regPass').value;
+  const err=document.getElementById('regErr');err.textContent='';
+  try{const r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});const d=await r.json();if(!r.ok){err.textContent=d.error||'Registration failed';return;}saveSession(d);document.getElementById('authModal').classList.add('hidden');toast('Account created! Welcome, '+d.username,'ok');const ri=document.getElementById('room');if(ri)ri.value=d.username;}catch(e){err.textContent='Network error';}
+}
+function doLogout(){_s={token:'',username:'',avatar_url:'',bio:''};localStorage.removeItem('ss_session');refreshUI();closeMenu();toast('Signed out','ok');}
+function toggleMenu(){document.getElementById('ubMenu').classList.toggle('open');}
+function closeMenu(){document.getElementById('ubMenu').classList.remove('open');}
+document.addEventListener('click',e=>{const ub=document.getElementById('userBtn'),menu=document.getElementById('ubMenu');if(ub&&menu&&!ub.contains(e.target)&&!menu.contains(e.target))closeMenu();});
+
+/* ═══ PROFILE ═══ */
+function toggleEditForm(){document.getElementById('pEditForm').classList.toggle('open');}
+async function saveProfile(){
+  if(!_s.token){toast('Login required','err');return;}
+  const bio=document.getElementById('editBio').value;
+  try{const r=await fetch('/api/profile/update',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_s.token},body:JSON.stringify({bio})});const d=await r.json();if(!r.ok){toast(d.error||'Save failed','err');return;}_s.bio=bio;localStorage.setItem('ss_session',JSON.stringify(_s));document.getElementById('pBio').textContent=bio||'No bio yet.';toggleEditForm();toast('Profile updated','ok');}catch(e){toast('Network error','err');}
+}
+async function uploadAvatar(input){
+  if(!input.files[0])return;if(!_s.token){toast('Login required','err');return;}
+  const reader=new FileReader();
+  reader.onload=async e=>{try{const r=await fetch('/api/avatar/upload',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_s.token},body:JSON.stringify({data:e.target.result})});const d=await r.json();if(!r.ok){toast(d.error||'Upload failed','err');return;}_s.avatar_url=d.url;localStorage.setItem('ss_session',JSON.stringify(_s));refreshUI();toast('Avatar updated!','ok');}catch(e){toast('Upload error','err');}};
+  reader.readAsDataURL(input.files[0]);input.value='';
+}
+async function loadProfileStreams(){
+  if(!_s.username)return;
+  try{const r=await fetch('/api/profile/'+_s.username);const d=await r.json();if(!r.ok)return;
+  if(d.created_at)document.getElementById('pJoined').textContent='Member since '+new Date(d.created_at).toLocaleDateString('en-US',{year:'numeric',month:'long'});
+  const c=document.getElementById('pStreams');
+  if(!d.streams||!d.streams.length){c.innerHTML='<div style="color:var(--dim);font-size:13px">No streams yet.</div>';return;}
+  c.innerHTML=d.streams.map(s=>`<div class="shi"><div class="shi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg></div><div><div class="shi-title">${s.title||'Untitled stream'}</div><div class="shi-meta">${s.category?'['+s.category+'] ':''} ${new Date(s.started_at).toLocaleString()} · ${s.peak_viewers} peak viewers${s.duration_sec?' · '+Math.round(s.duration_sec/60)+'m':''}</div></div></div>`).join('');}catch(e){}
+}
+
+/* ═══ DISCOVER ═══ */
+async function refreshDiscover(){
+  try{const r=await fetch('/api/streams');const list=await r.json()||[];const live=list.filter(s=>s.streamer);
+  const grid=document.getElementById('streamsGrid'),sb=document.getElementById('sbLive');
+  if(!live.length){grid.innerHTML='<div class="no-streams">NO ACTIVE STREAMS</div>';sb.innerHTML='<div style="padding:7px 13px;font-size:12px;color:var(--dim)">No streams</div>';return;}
+  grid.innerHTML=live.map(s=>`<div class="sc" onclick="joinStream('${s.name}','${s.streamer}')"><div class="sc-thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg><div class="sc-live">LIVE</div><div class="sc-vw"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3" fill="var(--bg)"/></svg>${s.viewers||0}</div></div><div class="sc-body"><div class="sc-user"><div class="sc-av">${s.avatar_url?`<img src="${s.avatar_url}">`:(s.streamer[0]||'?').toUpperCase()}</div><div><div class="sc-uname">${s.streamer}</div><div class="sc-room">${s.name}</div></div></div><div class="sc-title">${s.title||'Live stream'}</div>${s.category?`<span class="sc-cat">${s.category}</span>`:''}</div></div>`).join('');
+  sb.innerHTML=live.map(s=>`<button class="sb-item" onclick="joinStream('${s.name}','${s.streamer}')"><div class="live-dot"></div><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${s.streamer}</span></button>`).join('');}catch(e){}
+}
+function joinStream(room,streamer){const ri=document.getElementById('room');if(ri)ri.value=room;const role=document.getElementById('role');if(role)role.value='viewer';showPage('stream');if(typeof wsConnect==='function')wsConnect();}
+
+/* ═══ SETTINGS ═══ */
+function saveSetting(key,val){localStorage.setItem('ss_cfg_'+key,JSON.stringify(val));}
+function getSetting(key,def){try{const v=localStorage.getItem('ss_cfg_'+key);return v!==null?JSON.parse(v):def;}catch{return def;}}
+function loadSettings(){
+  [['settingFps','fps','60'],['settingDefaultQuality','defaultQuality','auto'],['settingEcho','echoCancel',true],['settingNoise','noiseSup',true],['settingAutoScroll','autoScroll',true]].forEach(([id,key,def])=>{
+    const el=document.getElementById(id);if(!el)return;
+    const v=getSetting(key,def);
+    if(el.type==='checkbox')el.checked=v;else el.value=v;
+  });
+  const sqSaved=getSetting('sourceQuality','720p');
+  document.querySelectorAll('[data-sq]').forEach(b=>b.classList.toggle('active',b.dataset.sq===sqSaved));
+}
+function revealKey(){const k=document.getElementById('streamKey');const key=_s.token?_s.token.split('.').pop().slice(0,22)+'...':'login required';k.textContent=k.textContent==='••••••••••••'?key:'••••••••••••';}
+function copyKey(){if(!_s.token){toast('Login required','err');return;}navigator.clipboard.writeText(_s.token).then(()=>toast('Token copied','ok'));}
+
+/* ═══ STREAMER SOURCE QUALITY ═══ */
+function setSourceQuality(key) {
+  document.querySelectorAll('[data-sq]').forEach(b=>b.classList.toggle('active',b.dataset.sq===key));
+  saveSetting('sourceQuality',key);
+  if(typeof window.applyViewerQualityAll==='function') window.applyViewerQualityAll(key);
+}
+window.setSourceQuality = setSourceQuality;
+
+/* ═══ PAGES ═══ */
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-item,.tb-btn').forEach(b=>b.classList.remove('active'));
+  const pg=document.getElementById('page'+name[0].toUpperCase()+name.slice(1));if(pg)pg.classList.add('active');
+  const sb=document.getElementById('sb'+name[0].toUpperCase()+name.slice(1));if(sb)sb.classList.add('active');
+  const tb=document.getElementById('tb'+name[0].toUpperCase()+name.slice(1));if(tb)tb.classList.add('active');
+  closeMenu();
+  if(name==='discover')refreshDiscover();
+  if(name==='profile'){if(!_s.token){openAuth('login');return;}loadProfileStreams();}
+  if(name==='settings')loadSettings();
+}
+
+/* ═══ TOAST ═══ */
+let _tt;
+function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='toast '+(type||'');el.classList.add('on');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('on'),3200);}
+
+/* ═══ INIT ═══ */
+window.addEventListener('DOMContentLoaded',()=>{
+  loadSession();loadSettings();
+  if(!_s.token)openAuth('login');
+  const roleEl=document.getElementById('role');
+  if(roleEl)roleEl.addEventListener('change',()=>{
+    if(roleEl.value==='streamer'&&_s.username){const ri=document.getElementById('room');if(ri)ri.value=_s.username;}
+  });
+  document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter')window.sendChat&&window.sendChat();});
+  document.getElementById('authPass').addEventListener('keydown',e=>e.key==='Enter'&&doLogin());
+  document.getElementById('regPass').addEventListener('keydown',e=>e.key==='Enter'&&doRegister());
+  refreshDiscover();setInterval(refreshDiscover,12000);
+});
+</script>
+<script src="/streamer.js"></script>
+</body>
+</html>
